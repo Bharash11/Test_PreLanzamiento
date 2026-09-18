@@ -1,0 +1,611 @@
+/* styles.css — todo el CSS del simulador (tema claro/oscuro, layout, componentes) */
+
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f2f1ed;--surface:#ffffff;--surface2:#eceae4;--surface3:#e2e0d8;
+  --border:#d8d5cc;--text:#1c1b18;--muted:#72706a;--accent:#1a5fa8;
+  --elastic:#2176ae;--plastic:#1a8c5e;--neck:#c8780a;--frac:#c43535;
+  --mat2:#7b2fa8;--temp1:#c43535;--temp2:#e88a00;--temp3:#2176ae;
+  --comp:#c8780a;
+  --radius:8px;--font:system-ui,'Segoe UI',sans-serif;--mono:'Courier New',monospace;
+  --header:48px;--tabbar:42px;
+  --ten-fill:rgba(26,140,94,0.12);--res-fill:rgba(33,118,174,0.15);
+  --comp-fill:rgba(200,120,10,0.12);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#181714;--surface:#222019;--surface2:#2a2825;--surface3:#333028;
+  --border:#3a3830;--text:#e6e4de;--muted:#8a8880;--accent:#4a9de0;
+  --ten-fill:rgba(26,140,94,0.18);--res-fill:rgba(33,118,174,0.2);
+  --comp-fill:rgba(200,120,10,0.18);
+}}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+header{height:var(--header);background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;gap:16px;position:sticky;top:0;z-index:200}
+header h1{font-size:15px;font-weight:600;letter-spacing:-.01em}
+
+/* FIX (QA v4.4 — hallazgo Etapa 8): a diferencia de la tabbar (que ya tenía
+   overflow-x:auto propio) y del sidebar/metrics/ficha (que ya tienen su
+   breakpoint de 720px), el header nunca se adaptó a mobile: título + badge
+   de versión + botón "Ficha técnica" + botón "Mi progreso" + badge de
+   dispositivo en una sola fila sin wrap desbordaban el ancho de un celular
+   y arrastraban TODA la página a scroll horizontal (el botón "Mi progreso"
+   y el badge de dispositivo quedaban directamente fuera de la pantalla).
+   Se achica el header en <720px: menos padding/gap, título y botones más
+   compactos, y se oculta el badge de dispositivo (es solo informativo/
+   usado por el modo test, no aporta nada al alumno y es lo primero que
+   sobra si hay que elegir qué recortar). */
+@media(max-width:720px){
+  header{padding:0 10px;gap:6px}
+  header h1{font-size:13px}
+  header #fichaHeaderBtn,header #progresoHeaderBtn{padding:5px 8px!important;font-size:11px!important}
+  header .device-badge{display:none}
+}
+header .ver{font-size:11px;color:var(--muted);background:var(--surface2);padding:2px 7px;border-radius:10px}
+header .subtitle{font-size:12px;color:var(--muted);margin-left:auto}
+
+.tabbar{height:var(--tabbar);background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:flex-end;padding:0 12px;gap:1px;position:sticky;top:var(--header);z-index:199;overflow-x:auto}
+.tab{padding:6px 13px;font-size:12px;border:none;background:transparent;color:var(--muted);
+  cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;margin-bottom:-1px;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
+
+.page{display:none}.page.active{display:flex;gap:0;min-height:calc(100vh - var(--header) - var(--tabbar))}
+.sidebar{width:290px;min-width:290px;background:var(--surface);border-right:1px solid var(--border);padding:14px;overflow-y:auto}
+.main{flex:1;padding:14px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+
+.sec-title{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:7px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.sec{margin-bottom:15px}
+.field{margin-bottom:8px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+.field label code{font-family:var(--mono);font-size:11px;background:var(--surface2);padding:1px 5px;border-radius:3px;color:var(--accent);margin-left:3px}
+
+/* ---- Botón de ayuda (?) y ventana emergente ---- */
+.help-btn{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;min-width:16px;
+  border-radius:50%;background:var(--surface3);color:var(--accent);border:1px solid var(--border);
+  font-size:10px;font-weight:700;line-height:1;cursor:pointer;margin-left:5px;padding:0;
+  vertical-align:middle;transition:background .15s,color .15s,transform .1s}
+.help-btn:hover{background:var(--accent);color:#fff;transform:scale(1.08)}
+.help-btn:active{transform:scale(.95)}
+label .help-btn,.ml .help-btn,.rl .help-btn,.dl .help-btn{position:relative;top:-1px}
+.mcard,.rcard,.dcard{position:relative}
+.field label{display:flex;align-items:center;flex-wrap:wrap}
+.ml,.rl,.dl{display:flex;align-items:center;gap:0}
+
+.help-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;
+  align-items:center;justify-content:center;padding:20px}
+.help-overlay.open{display:flex}
+.help-box{background:var(--surface);color:var(--text);border-radius:12px;max-width:420px;width:100%;
+  max-height:80vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.35);border:1px solid var(--border)}
+.help-box-hdr{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:14px 16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);border-radius:12px 12px 0 0}
+.help-box-hdr span{font-size:14px;font-weight:700;color:var(--accent)}
+.help-close{background:var(--surface2);border:1px solid var(--border);border-radius:7px;width:26px;height:26px;
+  font-size:14px;cursor:pointer;color:var(--muted);line-height:1;flex-shrink:0}
+.help-close:hover{color:var(--text);background:var(--surface3)}
+.help-box-body{padding:14px 16px;font-size:13px;line-height:1.6;color:var(--text)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+input[type=number],select,input[type=text]{width:100%;padding:6px 8px;font-size:13px;font-family:var(--font);
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);
+  color:var(--text);outline:none;transition:border-color .15s}
+input[type=number]:focus,select:focus,input[type=text]:focus{border-color:var(--accent)}
+input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
+.check-row{display:flex;align-items:center;gap:7px;font-size:12px;margin-bottom:6px;cursor:pointer;color:var(--text)}
+
+.derived-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:5px}
+.dcard{background:var(--surface2);border-radius:var(--radius);padding:7px 9px}
+.dcard .dl{font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:1px}
+.dcard .dv{font-size:14px;font-weight:600;color:var(--accent)}
+
+.btn-primary{width:100%;padding:8px;font-size:13px;font-weight:600;background:var(--accent);
+  color:#fff;border:none;border-radius:var(--radius);cursor:pointer;margin-bottom:5px;transition:opacity .15s}
+.btn-primary:hover{opacity:.87}
+.btn-secondary{width:100%;padding:6px;font-size:12px;background:transparent;
+  color:var(--muted);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:background .15s;margin-bottom:5px}
+.btn-secondary:hover{background:var(--surface2);color:var(--text)}
+/* FIX (Fase 7 — sync cruzado de material entre pestañas): botón inline chico,
+   no full-width como .btn-secondary, para que entre junto al <select> de
+   material sin romper el layout de .field existente. */
+.btn-sync{display:inline-flex;align-items:center;gap:5px;width:auto;margin:6px 0 0;
+  padding:5px 10px;font-size:11px;font-weight:600;background:transparent;
+  color:var(--accent);border:1px solid var(--accent);border-radius:var(--radius);
+  cursor:pointer;transition:background .15s,color .15s}
+.btn-sync:hover{background:var(--accent);color:#fff}
+/* Toast de reporte del sync ("aplicado en X, no aplica en Y"). No bloqueante,
+   se autodescarta solo; reusa --surface/--border/--accent existentes en vez
+   de introducir una paleta nueva. */
+.mat-sync-toast{position:fixed;left:50%;bottom:-140px;transform:translateX(-50%);
+  max-width:420px;width:calc(100% - 32px);background:var(--surface);border:1px solid var(--border);
+  border-left:3px solid var(--accent);border-radius:var(--radius);padding:10px 34px 10px 12px;
+  font-size:12px;line-height:1.55;box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:5000;
+  transition:bottom .25s ease}
+.mat-sync-toast.show{bottom:20px}
+.mat-sync-toast-title{font-weight:700;margin-bottom:4px}
+.mat-sync-toast-row{margin-top:2px}
+.mat-sync-toast-row .ok{color:var(--plastic);font-weight:600}
+.mat-sync-toast-row .warn{color:var(--muted);font-weight:600}
+.mat-sync-toast-close{position:absolute;top:6px;right:8px;background:none;border:none;
+  color:var(--muted);cursor:pointer;font-size:13px;line-height:1;padding:2px}
+.mat-sync-toast-close:hover{color:var(--text)}
+.btn-danger{width:100%;padding:6px;font-size:12px;background:transparent;
+  color:var(--frac);border:1px solid var(--frac);border-radius:var(--radius);cursor:pointer;transition:background .15s;margin-bottom:5px}
+
+/* PANEL DE PROGRESO (Fase 10) — misma paleta que el resto de la app, sin
+   introducir colores nuevos. */
+.prog-list{max-height:320px;overflow-y:auto;margin-top:10px;border:1px solid var(--border);border-radius:var(--radius)}
+.prog-row{display:flex;gap:8px;align-items:baseline;padding:6px 10px;font-size:12px;border-bottom:1px solid var(--border)}
+.prog-row:last-child{border-bottom:none}
+.prog-hora{color:var(--muted);font-family:var(--mono);flex-shrink:0;font-size:11px}
+.prog-tipo{text-transform:uppercase;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--accent);flex-shrink:0}
+.prog-detalle{color:var(--text)}
+.btn-danger:hover{background:rgba(196,53,53,.08)}
+.speed-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:8px}
+.speed-row input[type=range]{flex:1;accent-color:var(--accent)}
+
+.metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.mcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:9px 11px}
+.mcard .ml{font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:2px}
+.mcard .mv{font-size:18px;font-weight:600}
+.mcard .ms{font-size:10px;color:var(--muted);margin-top:1px}
+
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;display:flex;flex-direction:column;gap:9px}
+.chart-hdr{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:7px}
+.chart-title{font-size:13px;font-weight:600}
+.chart-actions{display:flex;gap:6px}
+.legend{display:flex;gap:10px;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)}
+.leg-line{width:14px;height:3px;border-radius:2px}
+.chart-wrap{position:relative;height:280px}
+
+.info-bar{background:var(--surface2);border-radius:var(--radius);padding:8px 12px;
+  font-size:12px;line-height:1.6;border-left:3px solid var(--accent);min-height:44px}
+.phase-pill{display:inline-block;font-size:11px;padding:2px 7px;border-radius:9px;font-weight:600;margin-left:5px}
+
+.results-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.rcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px}
+.rcard .rl{font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:1px}
+.rcard .rv{font-size:13px;font-weight:600}
+
+.probeta-bar{display:flex;align-items:center;gap:10px;padding:8px 12px;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+.probeta-bar .pb-label{font-size:11px;color:var(--muted);white-space:nowrap}
+
+.zoom-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px}
+.zoom-card .zt{font-size:12px;font-weight:600;margin-bottom:7px;color:var(--muted)}
+.zoom-wrap{position:relative;height:160px}
+
+.comp-result{background:var(--surface2);border-radius:var(--radius);padding:11px 13px;margin-top:8px}
+.comp-result table{width:100%;border-collapse:collapse;font-size:12px}
+.comp-result td,.comp-result th{padding:4px 7px;text-align:left;border-bottom:1px solid var(--border)}
+.comp-result th{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.comp-result td:last-child{text-align:right;font-weight:600;color:var(--accent)}
+.note{font-size:11px;color:var(--muted);margin-top:6px;font-style:italic;line-height:1.5}
+/* FIX (v4.7 — minitexto de fórmula, pedido junto con la integración de Ficha
+   al Grupo A): una línea corta, en mono y con el color de acento, mostrando
+   la fórmula que produce los resultados de ESE ensayo -- mismo tratamiento
+   visual que ya se usaba a mano en Material compuesto (E_par=E₁·f₁+E₂·f₂),
+   ahora como clase reutilizable para no repetir el estilo inline. */
+.formula-mini{font-family:var(--mono);color:var(--accent);font-size:12px;font-weight:600;margin:6px 0 10px;letter-spacing:.01em}
+
+.tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:600;border:1px solid}
+.tag-blue{color:var(--elastic);border-color:var(--elastic);background:rgba(33,118,174,.08)}
+.tag-green{color:var(--plastic);border-color:var(--plastic);background:rgba(26,140,94,.08)}
+.tag-orange{color:var(--neck);border-color:var(--neck);background:rgba(200,120,10,.08)}
+.tag-red{color:var(--frac);border-color:var(--frac);background:rgba(196,53,53,.08)}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--surface);border-radius:12px;width:100%;max-width:780px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.modal-hdr{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-hdr h2{font-size:16px;font-weight:600}
+.modal-body{padding:20px 22px}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);padding:2px 8px}
+.modal-close:hover{color:var(--text)}
+
+/* FIX (integración Unidad 3 — Fase 4): printFicha() ya existía (traccion.js)
+   pero no tenía una regla @media print, así que "Imprimir / Guardar PDF"
+   imprimía TODA la página (sidebar, chart principal, etc.), no solo la
+   ficha. Ahora solo se ve/imprime #fichaModal; los botones de acción
+   (.no-print) se ocultan al imprimir. */
+/* FIX (Fase 8 — corte de columnas al imprimir/exportar PDF): confirmado.
+   No había @page, así que el ancho imprimible real dependía del margen
+   default del navegador (~0.4-0.5in por lado), más angosto que los ~780px
+   del modal en pantalla. .ficha (grid a 2 columnas) y .ficha-row (flex
+   fk/fv sin wrap) estaban ajustados para ese ancho de pantalla, así que al
+   imprimir en una página más angosta el último caracter de valores como
+   "GPa"/"kJ/m³" caía fuera del área imprimible y no se renderizaba (no es
+   overflow:hidden -- no hay ninguno acá -- es contenido que cae fuera de
+   la hoja física). Fix en 3 frentes, para no depender de un solo navegador:
+   1) @page fija un margen conocido en vez del default del navegador.
+   2) .ficha pasa a 1 columna al imprimir (mismo criterio que el breakpoint
+      móvil de abajo): cada fila usa el ancho completo de la hoja.
+   3) .ficha-row permite wrap como red de seguridad adicional. */
+/* FIX (v3.17): el punto 2) de arriba nunca tuvo efecto en la práctica -- esta
+   regla y la base ".ficha{grid-template-columns:1fr 1fr}" (más abajo) tienen
+   la MISMA especificidad (un solo selector de clase), y esta quedaba escrita
+   ANTES que la base en el archivo. En un empate de especificidad, CSS
+   resuelve por orden de aparición: la que viene después gana, incluso
+   durante una impresión real -- así que las 2 columnas de pantalla se
+   imprimían igual, pese a que el comentario de arriba dice que ya estaba
+   resuelto. Se sube la especificidad calificando el selector con
+   "#fichaModal" en vez de simplemente reordenar el archivo, para que el fix
+   no dependa de mantener este bloque después de la regla base ante futuros
+   cambios. */
+@page{ margin:12mm; }
+@media print{
+  body *{visibility:hidden}
+  #fichaModal, #fichaModal *{visibility:visible}
+  #fichaModal{position:absolute;inset:0;background:#fff;padding:0;display:block!important}
+  #fichaModal .modal{box-shadow:none;max-width:100%;max-height:none;border-radius:0;margin:0}
+  .no-print{display:none!important}
+  #fichaModal .ficha{grid-template-columns:1fr}
+  .ficha-row{flex-wrap:wrap;row-gap:2px}
+  .ficha-row .fv{text-align:right}
+}
+
+/* FICHA TECNICA */
+.ficha{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.ficha-sec{border:1px solid var(--border);border-radius:var(--radius);padding:12px}
+.ficha-sec h3{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:9px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.ficha-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:12px}
+.ficha-row .fk{color:var(--muted)}
+.ficha-row .fv{font-weight:600;font-family:var(--mono)}
+.ficha-full{grid-column:1/-1}
+.ficha-mini{width:100%;height:180px;position:relative}
+.ficha-header{background:var(--accent);color:#fff;padding:12px 14px;border-radius:var(--radius) var(--radius) 0 0;margin:-20px -22px 18px;display:flex;justify-content:space-between;align-items:center}
+.ficha-title{font-size:18px;font-weight:700;letter-spacing:-.01em}
+.ficha-meta{font-size:12px;opacity:.85}
+.ficha-badge{display:inline-block;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700;margin-top:4px}
+.badge-ductil{background:rgba(26,140,94,.2);color:#1a8c5e}
+.badge-fragil{background:rgba(196,53,53,.2);color:#c43535}
+
+/* SAVED CONFIGS */
+.saved-list{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.saved-item{display:flex;align-items:center;gap:7px;background:var(--surface2);border-radius:var(--radius);padding:7px 9px;cursor:pointer;border:1px solid transparent;transition:border-color .15s}
+.saved-item:hover{border-color:var(--accent)}
+.saved-item .si-name{flex:1;font-size:13px;font-weight:500}
+.saved-item .si-mat{font-size:11px;color:var(--muted)}
+.saved-item .si-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px}
+.saved-item .si-del:hover{color:var(--frac)}
+
+/* POISSON */
+.poisson-viz{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px}
+.pois-bar{display:flex;align-items:center;gap:8px;font-size:12px}
+.pois-rect{border:2px solid var(--accent);border-radius:3px;transition:all .3s;background:rgba(33,118,174,.08)}
+.pois-label{font-size:11px;color:var(--muted);min-width:80px}
+.pois-value{font-weight:600;font-family:var(--mono);color:var(--accent);min-width:70px;text-align:right}
+
+/* DISCHARGE */
+.discharge-btn{background:var(--surface);border:1px solid var(--neck);color:var(--neck);border-radius:var(--radius);padding:5px 10px;font-size:12px;cursor:pointer;transition:background .15s}
+.discharge-btn:hover{background:rgba(200,120,10,.08)}
+.discharge-info{font-size:11px;color:var(--muted);padding:6px 9px;background:rgba(200,120,10,.06);border-left:2px solid var(--neck);border-radius:0 var(--radius) var(--radius) 0;margin-top:5px}
+
+/* TEMP LEGEND */
+.temp-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:5px}
+.tleg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+
+/* FIX BADGE */
+.fix-badge{display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:rgba(26,140,94,.12);color:#1a8c5e;border:1px solid rgba(26,140,94,.25);vertical-align:middle;margin-left:5px;letter-spacing:.03em}
+
+@media(max-width:720px){
+  .page.active{flex-direction:column}
+  .sidebar{width:100%;min-width:0;border-right:none;border-bottom:1px solid var(--border)}
+  .metrics-row,.results-grid{grid-template-columns:repeat(2,1fr)}
+  .ficha{grid-template-columns:1fr}
+  .ficha-full{grid-column:auto}
+}
+
+
+/* ================================================================
+   RESPONSIVE — Detección y adaptación por dispositivo v4-R
+   ================================================================ */
+.device-badge{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);
+  background:var(--surface2);padding:2px 8px;border-radius:10px}
+.device-badge svg{width:13px;height:13px;flex-shrink:0}
+
+/* Drawer toggle & overlay */
+.drawer-toggle{display:none;background:var(--accent);color:#fff;border:none;
+  border-radius:var(--radius);padding:8px 14px;font-size:13px;font-weight:600;
+  cursor:pointer;align-items:center;justify-content:center;gap:7px;
+  width:100%;margin-bottom:10px;box-sizing:border-box}
+.drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:299}
+.drawer-overlay.open{display:block}
+.drawer-close-btn{display:none}
+
+/* ---- Mobile layout ---- */
+@media(max-width:720px){
+  header .subtitle{display:none}
+  .drawer-toggle{display:flex!important}
+  .drawer-close-btn{display:block!important}
+  /* Sidebar becomes a fixed left drawer */
+  .sidebar{
+    position:fixed;top:0;left:-110%;width:88%;max-width:340px;height:100vh;
+    z-index:300;overflow-y:auto;
+    transition:left .28s cubic-bezier(.4,0,.2,1);
+    padding-top:12px;
+    box-shadow:4px 0 24px rgba(0,0,0,.2);
+    background:var(--surface);
+  }
+  .sidebar.open{left:0}
+  /* Main takes full width */
+  .page.active{flex-direction:column}
+  .main{padding:10px}
+  /* Metric/result grids: 2 columns on mobile */
+  .metrics-row,.results-grid{grid-template-columns:repeat(2,1fr)}
+  /* Smaller chart heights */
+  .chart-wrap{height:210px!important}
+  .zoom-wrap{height:130px!important}
+  /* Ficha modal */
+  .ficha{grid-template-columns:1fr}
+  .ficha-full{grid-column:auto}
+  /* Tabs: smaller */
+  .tab{padding:5px 9px;font-size:11px}
+  /* Modal */
+  .modal-bg{padding:6px}
+  .modal{max-height:95vh;border-radius:8px}
+  .probeta-bar{flex-wrap:wrap}
+  .probeta-bar svg{max-width:100%!important}
+}
+/* Desktop: hide mobile controls */
+@media(min-width:721px){
+  .drawer-toggle{display:none!important}
+  .drawer-close-btn{display:none!important}
+}
+
+/* ================================================================
+   TEST PANEL
+   ================================================================ */
+.test-panel{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);margin:10px;
+  box-shadow:0 2px 12px rgba(0,0,0,.07);overflow:hidden}
+.test-panel-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;border-bottom:1px solid var(--border);
+  cursor:pointer;user-select:none}
+.test-panel-hdr h3{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;margin:0}
+.tp-badge{font-size:10px;padding:2px 7px;border-radius:8px;font-weight:700;
+  background:var(--surface2);color:var(--muted)}
+.test-panel-body{padding:12px 14px;display:none}
+.test-panel-body.open{display:block}
+.test-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:7px;margin-bottom:12px}
+.test-card{border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px}
+.test-card .tc-name{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.test-card .tc-val{font-size:12px;font-weight:600;margin-bottom:4px;line-height:1.4}
+.tc-status{font-size:10px;padding:1px 6px;border-radius:6px;font-weight:700;display:inline-block;margin-bottom:3px}
+.tc-pass{background:rgba(26,140,94,.12);color:#1a8c5e}
+.tc-fail{background:rgba(196,53,53,.12);color:#c43535}
+.tc-warn{background:rgba(200,120,10,.12);color:#c8780a}
+.tc-detail{font-size:10px;color:var(--muted);line-height:1.4}
+.test-log{font-family:var(--mono);font-size:11px;background:var(--surface2);border-radius:var(--radius);
+  padding:8px 10px;max-height:200px;overflow-y:auto;line-height:1.8;white-space:pre-wrap;margin-top:10px}
+.tl-pass{color:#1a8c5e}.tl-fail{color:#c43535}.tl-warn{color:#c8780a}
+.test-run-btn{background:var(--accent);color:#fff;border:none;border-radius:var(--radius);
+  padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;margin-right:6px}
+.test-run-btn:hover{opacity:.87}
+.test-clear-btn{background:transparent;border:1px solid var(--border);border-radius:var(--radius);
+  padding:7px 14px;font-size:12px;color:var(--muted);cursor:pointer}
+.test-summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;font-size:12px;font-weight:500}
+@media(max-width:720px){
+  .test-grid{grid-template-columns:1fr 1fr}
+  .test-panel{margin:10px 0 0 0;border-radius:0;border-left:none;border-right:none}
+}
+
+
+/* ================================================================
+   MODULO 2 - DUREZA (tab 'dureza')
+   ================================================================ */
+.dz-subnav{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px}
+.dz-subbtn{font-size:11px;padding:5px 9px;border-radius:var(--radius);border:1px solid var(--border);
+  background:var(--surface);color:var(--muted);cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.dz-subbtn:hover{color:var(--text);border-color:var(--accent)}
+.dz-subbtn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.dz-sub-panel{display:none}
+.dz-sub-panel.active{display:block}
+.dz-sub-ctrl{display:none}
+.dz-sub-ctrl.active{display:block}
+.dz-table-wrap{max-height:260px;overflow-y:auto}
+.dz-table-wrap table{width:100%;border-collapse:collapse;font-size:12px}
+.dz-table-wrap th{position:sticky;top:0;background:var(--surface);font-size:10px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.04em;text-align:left;padding:6px 8px;border-bottom:1px solid var(--border)}
+.dz-table-wrap td{padding:6px 8px;border-bottom:1px solid var(--border)}
+.dz-row-sel{cursor:pointer;transition:background .12s}
+.dz-row-sel:hover{background:var(--surface2)}
+.dz-row-sel.on{background:rgba(33,118,174,.12)}
+.dz-row-sel.on td:first-child{color:var(--accent);font-weight:700}
+.dz-badge-ok{color:#1a8c5e}
+.dz-badge-bad{color:var(--frac)}
+.dz-hint{margin-top:8px}
+.dz-hint summary{cursor:pointer;color:var(--accent);font-size:12px}
+.dz-hint[open] summary{margin-bottom:6px}
+.dz-viz-wrap{background:var(--surface2);border-radius:var(--radius);padding:8px}
+/* FIX (post-v6.13): utilidad para que un bloque ocupe las 2 columnas del
+   grid de un panel dz_panel_*/cm_panel_* (mismo criterio que .ficha-full,
+   pero sin acoplarse a la grilla de la ficha técnica). Sin efecto cuando el
+   panel no está en modo grid (mobile, o alguno que no lo usa). */
+.dz-full{grid-column:1/-1}
+@media(max-width:720px){.dz-subnav{gap:4px}.dz-subbtn{font-size:10px;padding:4px 7px}}
+
+/* FIX #61 (QA exhaustivo v6.13, etapa 4): grilla de tarjetas "Paso 1..5" para
+   R.R. Moore, debajo de la escena. Complementa (no reemplaza) el indicador
+   dinámico de paso actual (#rr_pasoTitulo/#rr_pasoTexto, arriba de la
+   escena): ahí se ve el paso vigente con detalle mientras corre el ensayo;
+   acá se ve el procedimiento completo de un vistazo, con la tarjeta del
+   paso vigente resaltada (.rr-paso-card.active) para no duplicar contexto
+   sin conectar ambas vistas entre sí. */
+.rr-pasos-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
+.rr-paso-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 10px;transition:background .15s,border-color .15s}
+.rr-paso-card .rr-paso-num{font-size:10px;font-family:var(--mono);color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.02em;margin-bottom:4px}
+.rr-paso-card .rr-paso-titulo{font-weight:600;font-size:12.5px;margin-bottom:3px}
+.rr-paso-card .rr-paso-texto{font-size:11.5px;color:var(--muted);line-height:1.4}
+.rr-paso-card.active{background:var(--surface);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.rr-paso-card.active .rr-paso-num{color:var(--accent)}
+.rr-paso-card.active .rr-paso-texto{color:var(--text)}
+@media(max-width:720px){.rr-pasos-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* FIX (v4.1): mismas reglas que .dz-subnav/.dz-subbtn/.dz-sub-panel/.dz-sub-ctrl,
+   reutilizadas 1:1 para el sub-nav de "Ensayos complementarios" (prefijo cm-). */
+.cm-subnav{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px}
+.cm-subbtn{font-size:11px;padding:5px 9px;border-radius:var(--radius);border:1px solid var(--border);
+  background:var(--surface);color:var(--muted);cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.cm-subbtn:hover{color:var(--text);border-color:var(--accent)}
+.cm-subbtn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.cm-sub-panel{display:none}
+.cm-sub-panel.active{display:block}
+.cm-sub-ctrl{display:none}
+.cm-sub-ctrl.active{display:block}
+@media(max-width:720px){.cm-subnav{gap:4px}.cm-subbtn{font-size:10px;padding:4px 7px}}
+
+/* ================================================================
+   MODULO 1 - ENSAYO DESTRUCTIVO (tab 'destructivo') — mismo patrón que el módulo de ensayo no destructivo
+   ================================================================ */
+.ed-subnav{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px}
+.ed-subbtn{font-size:11px;padding:5px 9px;border-radius:var(--radius);border:1px solid var(--border);
+  background:var(--surface);color:var(--muted);cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.ed-subbtn:hover{color:var(--text);border-color:var(--accent)}
+.ed-subbtn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ed-sub-panel{display:none}
+.ed-sub-panel.active{display:block}
+.ed-sub-ctrl{display:none}
+.ed-sub-ctrl.active{display:block}
+@media(max-width:720px){.ed-subnav{gap:4px}.ed-subbtn{font-size:10px;padding:4px 7px}}
+
+/* ================================================================
+   MODULO 3 - FRACTURA, FATIGA Y FLUENCIA (tab 'rotura') — mismo patrón que los otros dos módulos
+   ================================================================ */
+.rt-subnav{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:4px}
+.rt-subbtn{font-size:11px;padding:5px 9px;border-radius:var(--radius);border:1px solid var(--border);
+  background:var(--surface);color:var(--muted);cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.rt-subbtn:hover{color:var(--text);border-color:var(--accent)}
+.rt-subbtn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.rt-sub-panel{display:none}
+.rt-sub-panel.active{display:block}
+.rt-sub-ctrl{display:none}
+.rt-sub-ctrl.active{display:block}
+/* FIX #51 (hallazgo QA v6.9, Etapa 1): los 3 comentarios de versión de
+   abajo (Charpy/Brinell/Rockwell) decían (v6.7)/(v6.8)/(v6.10) -- el
+   CHANGELOG ubica estas 3 escenas en v6.8/v6.9/v6.9 respectivamente.
+   Corregidos acá para que coincidan con la evidencia real del CHANGELOG. */
+/* FIX (v6.8): en Impacto Charpy, la escena del péndulo y la curva T vs E van
+   apiladas en mobile (una sola columna angosta) pero lado a lado en pantallas
+   de escritorio, para no obligar a scrollear hacia abajo para ver la curva
+   mientras se está mirando el ensayo. */
+@media(min-width:980px){
+  #rt_panel_fr_impacto.active{display:grid;grid-template-columns:1fr 1.1fr;gap:14px;align-items:start}
+}
+/* FIX (v6.9): mismo criterio que #rt_panel_fr_impacto (Charpy) -- en
+   Brinell, la escena del ensayo (corte + huella, combinados en un solo SVG)
+   va apilada debajo de la tarjeta de fórmula/resultado en mobile, pero al
+   lado en desktop, para no obligar a scrollear. */
+@media(min-width:980px){
+  #dz_panel_brinell.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+}
+/* FIX (v6.9): mismo criterio que #rt_panel_fr_impacto (Charpy) y
+   #dz_panel_brinell -- en Rockwell, tabla de escalas y resultado+escena van
+   apilados en mobile pero al lado en desktop. */
+@media(min-width:980px){
+  #dz_panel_rockwell.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+}
+/* FIX (v6.9): mismo criterio que los otros tres paneles de dureza. */
+@media(min-width:980px){
+  #dz_panel_micro.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+}
+/* FIX (prototipo post-v6.9): mismo criterio que los 4 paneles de dureza --
+   en Tensiones residuales, con el orden actual de tarjetas (intro,
+   metrics-row, escena hole-drilling, círculo de Mohr) el grid 2x2 empareja
+   naturalmente intro+metrics arriba y escena+Mohr abajo lado a lado, que es
+   la comparación que más importa ver junta en desktop. */
+@media(min-width:980px){
+  #cm_panel_tensiones.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+}
+/* FIX (prototipo post-v6.12): mismo criterio -- en Ultrasonido, con el
+   orden actual de tarjetas (intro, metrics-row, escena palpador, A-scan,
+   resultado desafío) empareja intro+metrics arriba y escena+A-scan abajo
+   lado a lado; la tarjeta de resultado del desafío (oculta por defecto)
+   queda sola en la fila siguiente, mismo comportamiento ya aceptado en
+   otros paneles con cantidad impar de tarjetas. */
+@media(min-width:980px){
+  #dz_panel_ultrasonido.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+}
+/* FIX (prototipo post-v6.15): mismo criterio que los 5 paneles anteriores
+   -- en Corrosión, con el orden actual de tarjetas (intro, metrics-row,
+   escena de envejecimiento, curva de Faraday) el grid 2x2 empareja
+   naturalmente intro+metrics arriba y escena+curva abajo lado a lado.
+   A diferencia de Metalografía (donde deliberadamente NO se agregó esta
+   grilla, ver comentario en escena-metalografia.js), acá sí hay 2 vistas
+   analíticas DISTINTAS (la placa envejeciendo y la curva pérdida-tiempo)
+   que tiene sentido ver en simultáneo. */
+@media(min-width:980px){
+  #cm_panel_corrosion.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+}
+/* FIX (prototipo post-v6.17): mismo criterio que Tensiones/Ultrasonido/
+   Corrosión -- en Desgaste, con el orden actual de tarjetas (intro,
+   metrics-row de 3, escena ranura+pin, curva de Archard) el grid 2x2
+   empareja intro+metrics arriba y escena+curva abajo lado a lado. */
+@media(min-width:980px){
+  #cm_panel_desgaste.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+}
+/* FIX (prototipo post-v6.18): Fluencia (rt_panel_fl_comportamiento) es
+   distinto a los 4 paneles anteriores -- no tiene una tarjeta "intro" que
+   empareje con metrics-row en la fila 1 (va directo a metrics-row +
+   gráfico). Para lograr el mismo resultado (escena y curva visibles lado
+   a lado en desktop, sin obligar a scrollear) se hace que metrics-row
+   ocupe las 2 columnas en la fila 1, y la escena del horno + la curva de
+   fluencia (los 2 chart-card siguientes) se emparejen en la fila 2. */
+@media(min-width:980px){
+  #rt_panel_fl_comportamiento.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  #rt_panel_fl_comportamiento.active > .metrics-row{grid-column:1/-1}
+}
+/* FIX (prototipo post-v6.19): mismo criterio que Fluencia -- en Fatiga/
+   Ley de Paris (rt_panel_ft_velocidad), metrics-row (ahora con 4
+   tarjetas: da/dN, K_IC, a_c, N_f) ocupa las 2 columnas en la fila 1, y
+   la escena de la grieta creciendo + la curva da/dN vs ΔK se emparejan
+   en la fila 2. */
+@media(min-width:980px){
+  #rt_panel_ft_velocidad.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  #rt_panel_ft_velocidad.active > .metrics-row{grid-column:1/-1}
+}
+/* FIX #88 (hallazgo QA v6.21, Etapa 36): estos 5 paneles tienen exactamente
+   la misma estructura de 2 chart-card (escena | resultado, o intro | escena
+   de pasos) que ya recibió esta grilla en Brinell/Rockwell/Vickers/
+   Ultrasonido, pero se habían quedado afuera del rollout incremental de
+   v6.8 a v6.19. Nota: R.R. Moore (rt_panel_ft_rrmoore), que en la revisión
+   original también se había señalado como candidato, en realidad NO tiene
+   esta estructura de 2 tarjetas -- su escena, texto y grilla de pasos viven
+   en un único chart-card combinado, así que aplicarle este mismo grid no
+   tendría ningún efecto (una sola celda) y se descarta como falso positivo
+   de esa revisión. */
+@media(min-width:980px){
+  #dz_panel_janka.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  #dz_panel_esclero.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  #dz_panel_radiografia.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  #dz_panel_liquidos.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  #dz_panel_particulas.active{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+}
+.rt-group-label{width:100%;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);margin:8px 0 2px;flex-basis:100%}
+.rt-group-label:first-child{margin-top:0}
+/* FIX (v5.14): reorganización de navegación -- grupo de 2do nivel dentro de
+   la pestaña "Ensayos mecánicos" (Tracción/compresión, Dureza, Fractura-
+   fatiga-fluencia), mismo patrón display:none/.active que el resto de los
+   sub-nav (dz/ed/rt/cm), pero un nivel arriba: alterna qué grupo entero
+   (subnav + paneles + controles del sidebar) se ve, sin tocar dzSwitch/
+   edSwitch/rtSwitch por dentro de cada grupo. */
+.mec-groupnav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.mec-groupbtn{font-size:13px;padding:7px 14px;border-radius:var(--radius);border:1px solid var(--border);
+  background:var(--surface2);color:var(--muted);cursor:pointer;font-weight:600;transition:background .15s,color .15s,border-color .15s}
+.mec-groupbtn:hover{color:var(--text);border-color:var(--accent)}
+.mec-groupbtn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mec-group-aside{display:none}
+.mec-group-aside.active{display:block}
+.mec-group-main{display:none}
+.mec-group-main.active{display:block}
+@media(max-width:720px){.mec-groupnav{gap:4px}.mec-groupbtn{font-size:11px;padding:6px 10px}}
+.rt-diagram{display:flex;gap:10px;flex-wrap:wrap;justify-content:space-around;background:var(--surface2);
+  border-radius:var(--radius);padding:10px}
+.rt-diagram-step{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:var(--muted);max-width:120px;text-align:center}
+.rt-soon{padding:30px 14px;text-align:center;color:var(--muted);font-size:12px;background:var(--surface2);border-radius:var(--radius)}
+.mini-btn{flex:1;min-width:70px;padding:6px 4px;font-size:10px;border-radius:var(--radius);border:1px solid var(--border);
+  background:var(--surface2);color:var(--muted);cursor:pointer}
+.mini-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+@media(max-width:720px){.rt-subnav{gap:4px}.rt-subbtn{font-size:10px;padding:4px 7px}}
